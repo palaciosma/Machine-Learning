@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab03 - Data Preparation and Cleaning in R
+#### Exercise: Data Preparation and Cleaning
+*Alessandro Pandini*
+Revision: 1.01
+
+***
+
+#### 1. load data
+```{r}
+### 1.1 load the data from the airquality.csv file and inspect it
+
+df <- read.csv("air_dataset.csv", na.strings = c("NA", ""))
+```
+
+#### 2. handling missing values
+```{r}
+### 2.1 identify features with missing values
+###   by looking at the data frame summary
+
+summary(df)
+
+
+### 2.2 calculate and inspect a table of the percentage of NA per feature
+
+df_NA_count <- apply(is.na(df), 2, sum)
+df_NA_count
+
+df_NA_perc <-df_NA_count / dim(df)[1] * 100
+df_NA_perc
+
+### 2.3 impute missing Ozone values by replacement with the median value
+
+median_ozone <- median(df$Ozone, na.rm = T)
+df[is.na(df$Ozone), 'Ozone'] = median_ozone
+
+
+### 2.4 remove instances with missing Solar.R values
+
+df_NA_Solar <- which(is.na(df$Solar.R))
+df_clean <- df[-c(df_NA_Solar), ]
+```
+
+#### 3. handling duplicate instances
+```{r}
+### 3.1 remove duplicate instances from the data set obtained from 2.4
+
+df_clean <- unique(df_clean)
+
+```
+
+#### 4. handling outliers
+```{r}
+### 4.1 remove instances with outlier values for Ozone
+
+ozone_boxplot <- boxplot(df_clean$Ozone)
+ozone_boxplot
+
+ozone_boxplot$out
+
+df_clean <- df_clean[-c(ozone_boxplot$out), ]
+
+```
+
+#### 5. preparing training/test set
+```{r}
+### 5.1 split the cleaned data frame in training/test set (70% / 30%)
+
+n_rows <- nrow(df_clean)
+training_idx <- sample(n_rows, n_rows * 0.7)
+training_df_clean <- df_clean[training_idx,]
+test_df_clean <- df_clean[-training_idx,]
+
+
+```

@@ -1,0 +1,191 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab03 - Data Preparation and Cleaning in R
+#### Tutorial
+*Alessandro Pandini*
+Revision: 1.01
+
+***
+#### Table of contents
+
+1. [Detecting missing values](#Detecting_missing_values)  
+2. [Imputing missing values / removing incomplete instances](#Imputing_missing_values)  
+3. [Removing duplicate instances](#Removing_duplicate_instances)  
+4. [(Simple) outlier detection](#outlier_detection)  
+5. [Subsetting a data frame](#Subsetting_data_frame)  
+6. [Sampling instances from a data frame](#Sampling_instances)  
+
+***
+
+#### 1. Detecting missing values{#Detecting_missing_values}
+```{r}
+# read RMS Titanic data from a csv file
+#   note: NA and empty strings are interpreted as NA values
+RMS_Titanic <- read.csv("RMS_Titanic.csv", na.strings = c("NA", ""))
+# inspect the data set
+str(RMS_Titanic)
+
+# convert the Survived and Pclass variable to factors
+RMS_Titanic$Survived <- factor(RMS_Titanic$Survived)
+RMS_Titanic$Pclass <- factor(RMS_Titanic$Pclass)
+# inspect the dataset to see the changes you made
+str(RMS_Titanic)
+
+# NA (Not Available) is interpreted as 'missing value' in R
+# get summary report of the variables to look for NAs
+#   three variables (Age, Cabin, Embarked) have NA values
+summary(RMS_Titanic)
+
+# get a table of the number of NA per variable
+RMS_Titanic_NA_count <- apply(is.na(RMS_Titanic), 2, sum)
+RMS_Titanic_NA_count
+# ...and the percentage of NA per variable
+RMS_Titanic_NA_perc <- RMS_Titanic_NA_count / dim(RMS_Titanic)[1] * 100
+RMS_Titanic_NA_perc
+```
+
+#### 2. Imputing missing values / removing incomplete instances{#Imputing_missing_values}
+```{r}
+# impute by replacement with the most frequent value (for Port of Embarkation)
+#   first calculate the frequency of values (C, Q, S) for Embarked
+#     S is the most frequent
+table(RMS_Titanic$Embarked)
+#   then set Embarked missing values to S
+RMS_Titanic[is.na(RMS_Titanic$Embarked), 'Embarked'] = 'S'
+
+# inspect the frequency of values for Embarked after imputation
+table(RMS_Titanic$Embarked)
+
+# impute missing Age values by replacement with the median value
+#   first get the age median
+#     note: NA should be removed to calculate the median!
+median_age <- median(RMS_Titanic$Age, na.rm = T)
+#   then set Age missing values to its median
+RMS_Titanic[is.na(RMS_Titanic$Age), 'Age'] = median_age
+
+# remove instances with missing values in all other attributes
+RMS_Titanic_noNA <- na.omit(RMS_Titanic)
+
+# check the size of the data frames before and after removal
+dim(RMS_Titanic)
+dim(RMS_Titanic_noNA)
+
+# note: R functions often have an na.action option
+#   this option defines how NAs will be treated in the analysis
+#   it is particularly important, if NAs have not been removed from the data
+```
+
+#### 3. Removing duplicate instances{#Removing_duplicate_instances}
+```{r}
+# remove duplicate rows
+RMS_Titanic_clean <- unique(RMS_Titanic_noNA)
+
+# check the size of the data frames before and after removal
+dim(RMS_Titanic_noNA)
+dim(RMS_Titanic_clean)
+
+# find the duplicate rows
+#   duplicated returns a boolean vector
+RMS_Titanic_duplicated <- duplicated(RMS_Titanic_noNA)
+RMS_Titanic_duplicated
+
+# duplicated rows can then be extracted by conditional filtering
+RMS_Titanic_noNA[RMS_Titanic_duplicated, ]
+```
+
+#### 4. (Simple) outlier detection{#outlier_detection}
+```{r}
+# inspect the Fare distribution using summary statistics
+summary(RMS_Titanic_clean$Fare)
+# generate a boxplot of the Fare variable
+boxplot(RMS_Titanic_clean$Fare)
+
+# outliers can be detected from the boxplot
+#   note: the boxplot command returns a summary statistics object
+#     this object can be assigned to a variable and inspected
+RMS_Titanic_boxplot <- boxplot(RMS_Titanic_clean$Fare)
+# inspect the boxplot statistics
+#   note: the returened value is a list object
+RMS_Titanic_boxplot
+# outlier values can be extracted from this object
+#   they are stored in the element 'out' of the list
+RMS_Titanic_boxplot$out
+
+# get the minimum value that is an outlier
+min(RMS_Titanic_boxplot$out)
+
+# outliers rows can be extracted by conditional selection
+RMS_Titanic_clean[RMS_Titanic_clean$Fare >= min(RMS_Titanic_boxplot$out), ]
+```
+
+#### 5. Subsetting a data frame{#Subsetting_data_frame}
+```{r}
+# subset the dataset for age < 10
+RMS_Titanic_clean_10 <- subset(RMS_Titanic_clean, Age < 10)
+RMS_Titanic_clean_10
+
+# subset the dataset for age > 60 and Sex == male
+RMS_Titanic_clean_60_male <- subset(RMS_Titanic_clean, Age > 60 & Sex == 'male')
+RMS_Titanic_clean_60_male
+```
+
+#### 6. Sampling instances from a data frame}{#Sampling_instances}
+```{r}
+# random sample of 10 rows from the data frame
+#   first sample 10 number from the row indices
+sample_idx <- sample(nrow(RMS_Titanic_clean), 10)
+sample_idx
+#   then extract the instances using the sampled indices
+RMS_Titanic_clean[sample_idx,]
+
+# random sample of 100 indices w/ replacement
+sample_idx <- sample(nrow(RMS_Titanic_clean), 100, replace = T)
+# inspect the sample (there should be repeated values)
+sample_idx
+
+# create a 70/30 training/test set split
+#   note: test set indices are derived as complement of the training ones
+#   first get the number of rows in the data frame
+n_rows <- nrow(RMS_Titanic_clean)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_RMS_Titanic_clean <- RMS_Titanic_clean[training_idx,]
+test_RMS_Titanic_clean <- RMS_Titanic_clean[-training_idx,]
+
+# check the size of the two data sets
+dim(training_RMS_Titanic_clean)
+dim(test_RMS_Titanic_clean)
+
+# stratified sampling is available from the sampling package
+# install the sampling package from CRAN
+if(require(sampling) == FALSE){
+    install.packages("sampling")
+}
+
+# stratified sampling by Sex
+#   extract 8 rows from the 'female' partition and 5 from the 'male' one
+sampling::strata(RMS_Titanic_clean, "Sex", c(8,5))
+
+######################################################################
+#
+# for more advanced data frame handling see the package:
+#   dplyr
+#   https://cran.rstudio.com/web/packages/dplyr/vignettes/base.html
+#
+######################################################################
+```
+
