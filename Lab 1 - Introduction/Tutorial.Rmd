@@ -1,0 +1,405 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706 
+### Lab 01 - Introduction to R for ML  
+#### Step by step tutorial  
+*Alessandro Pandini*  
+Revision: 1.01
+
+Contents adapted from:  
+<https://github.com/dataspelunking/MLwR>
+
+Reference:  
+Chapter 2: Managing and Understanding Data  
+Machine Learning with R - Second Edition  
+Brett Lantz  
+Packt Publishing 2015  
+
+***
+#### Table of contents
+
+R data structures  
+1. [Vectors](#Vectors)  
+2. [Factors](#Factors)  
+3. [Matrices and Arrays](#Matrices_and_Arrays)  
+4. [Lists](#Lists)  
+5. [Data Frames](#Data_Frames)  
+
+Managing data in R  
+6. [Write and read data](#Write_and_read_data)  
+7. [Basic data exploration](#Basic_data_exploration)  
+8. [Basic data integration](#Basic_data_integration)  
+
+***  
+
+#### 1. Vectors {#Vectors}
+```{r}
+#   1 dimension
+#   ordered elements of the same type:
+#       integer     (numerical)
+#       double      (numerical)
+#       character
+#       logical
+
+# create vectors of data for three medical patients
+#   note: the <- assignment operator in R
+#         the c() combine operator in R
+subject_name <- c("John Doe", "Jane Doe", "Steve Graves")
+temperature <- c(98.1, 98.6, 101.4)
+flu_status <- c(FALSE, FALSE, TRUE)
+
+# inspect vector type
+#   note: the typeof function in R
+typeof(subject_name)
+typeof(temperature)
+typeof(flu_status)
+
+# get help on a function in R
+help(typeof)
+?typeof
+
+# access the second element in body temperature vector
+temperature[2]
+
+# access items in the range 2 to 3
+temperature[2:3]
+
+# access all elements except item 2 using the minus sign
+temperature[-2]
+
+# perform conditional selection using a logical vector
+temperature[c(TRUE, TRUE, FALSE)]
+
+# perform conditional selection using a logical vector
+temperature[flu_status]
+
+# perform conditional selection using a conditional statement
+flu_status[temperature > 98.5]
+
+# perform conditional selection using a condition statement
+#   note: boolean operator
+subject_name[temperature > 98.5 & flu_status == TRUE]
+
+# include missing values (i.e. Not Available)
+patient_name <- c("Jennifer Doe", "Bob Doe", "Steve Graves", "John Smith")
+age <- c(56, 77, 101, NA)
+
+# inspect vector
+patient_name
+age
+
+# NULL object in R
+vaccination <- NULL
+vaccination
+```
+
+#### 2. Factors {#Factors}
+```{r}
+#   1 dimension
+#   ordered elements of the same type for categorical / nominal values
+
+# add gender factor
+gender <- factor(c("MALE", "FEMALE", "MALE"))
+gender
+
+# add blood type factor
+blood <- factor(c("O", "AB", "A"),
+                levels = c("A", "B", "AB", "O"))
+blood
+
+# add ordered factor
+symptoms <- factor(c("SEVERE", "MILD", "MODERATE"),
+                   levels = c("MILD", "MODERATE", "SEVERE"),
+                   ordered = TRUE)
+symptoms
+
+# check for symptoms greater than moderate
+symptoms > "MODERATE"
+```
+
+#### 3. Matrices and Arrays {#Matrices_and_Arrays}  
+```{r}
+#   2 and n dimensions
+#   ordered elements of the same type
+
+# create a 2x2 matrix
+m <- matrix(c(1, 2, 3, 4), nrow = 2)
+m
+
+# equivalent to the above
+m <- matrix(c(1, 2, 3, 4), ncol = 2)
+m
+
+# create a 2x3 matrix
+m <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
+m
+
+# create a 3x2 matrix
+m <- matrix(c(1, 2, 3, 4, 5, 6), ncol = 2)
+m
+
+# extract values from matrixes
+m[1, 1]
+m[3, 2]
+
+# extract rows
+m[1, ]
+
+# extract columns
+m[, 1]
+
+# create a 3D array
+a <- array(c(1:24), dim = c(2,3,4))
+a
+```
+
+
+#### 4. Lists {#Lists}  
+```{r}
+#   1 dimension
+#   ordered elements of the different type (with named components)
+
+# display information for a patient
+subject_name[1]
+temperature[1]
+flu_status[1]
+gender[1]
+blood[1]
+symptoms[1]
+
+# create a list for the patient data
+subject1 <- list(fullname = subject_name[1],
+                 temperature = temperature[1],
+                 flu_status = flu_status[1],
+                 gender = gender[1],
+                 blood = blood[1],
+                 symptoms = symptoms[1])
+
+# display the patient data
+subject1
+
+# get a single list value by position (returns a sub-list)
+subject1[2]
+typeof(subject1[2])
+# checking the data type with the class() function
+class(subject1[2])
+
+# get a single list value by position (returns a numeric vector)
+subject1[[2]]
+typeof(subject1[[2]])
+
+# get a single list value by name
+subject1$temperature
+
+# get several list items by specifying a vector of names
+subject1[c("temperature", "flu_status")]
+
+# access a list like a vector
+subject1[2:3]
+
+# create a list of lists
+subject2 <- list(fullname = subject_name[2],
+                 temperature = temperature[2],
+                 flu_status = flu_status[2],
+                 gender = gender[2],
+                 blood = blood[2],
+                 symptoms = symptoms[2])
+
+subject3 <- list(fullname = subject_name[3],
+                 temperature = temperature[3],
+                 flu_status = flu_status[3],
+                 gender = gender[3],
+                 blood = blood[3],
+                 symptoms = symptoms[3])
+
+cohort <- list(subject1, subject2, subject3)
+
+# inspect the list of lists
+cohort
+
+# access subject 2 data
+cohort[[2]]
+```
+
+#### 5. Data Frames {#Data_Frames}  
+```{r}
+# create a data frame from medical patient data
+pt_data <- data.frame(subject_name, temperature, flu_status, gender,
+                      blood, symptoms, stringsAsFactors = FALSE)
+
+# display the data frame
+pt_data
+
+# get a single column from a data frame
+pt_data$subject_name
+
+# get several columns by specifying a vector of names
+pt_data[c("temperature", "flu_status")]
+
+# this is the same as above, extracting temperature and flu_status
+pt_data[2:3]
+
+# accessing by row and column
+pt_data[1, 2]
+
+# accessing several rows and several columns using vectors
+pt_data[c(1, 3), c(2, 4)]
+
+# extract only column 1 for all rows
+pt_data[, 1]
+# extract only row 1 for all columns
+pt_data[1, ]
+# extract all rows and all columns
+pt_data[ , ]
+
+# other examples
+pt_data[c(1, 3), c("temperature", "gender")]
+pt_data[-2, c(-1, -3, -5, -6)]
+
+# conditional selection
+pt_data[pt_data$gender == 'MALE', ]
+pt_data[pt_data$temperature < 100, ]
+```
+
+#### 6. Write and read data {#Write_and_read_data}  
+```{r}
+# write a data frame in a text file
+write.table(pt_data, "pt_data.dat")
+# write a data frame in a csv file
+write.csv(pt_data, "pt_data.csv")
+
+# save a data frame in an R binary file
+save(pt_data, file = "pt_data.RData")
+
+# show all data structures in memory
+ls()
+
+# remove the m and subject1 objects
+rm(m, subject1)
+ls()
+
+# remove all objects
+rm(list=ls())
+ls()
+
+# read the patient data from the text file
+patient_data <- read.table("pt_data.dat", header = TRUE, stringsAsFactors = FALSE)
+patient_data
+ls()
+
+# load the patient data from the R binary file
+load("pt_data.RData")
+ls()
+pt_data
+
+# read used cars data from a csv file
+usedcars <- read.csv("usedcars.csv")
+ls()
+```
+
+#### 7. Basic data exploration {#Basic_data_exploration}  
+```{r}
+# show the used cars data
+usedcars
+# get data frame head (first six lines) and tail (last six lines) parts
+head(usedcars)
+tail(usedcars)
+
+# get data frame size
+nrow(usedcars)
+ncol(usedcars)
+dim(usedcars)
+
+# get column names
+names(usedcars)
+
+# display internal structure of data frame object
+str(usedcars)
+
+# display internal structure of data frame object
+#   note: the effect of stringsAsFactors = FALSE in reading the data
+str(patient_data)
+
+# get summary of mileage feature
+summary(usedcars$mileage)
+
+# get statitics on mileage feature
+mean(usedcars$mileage)      # mean
+median(usedcars$mileage)    # median
+range(usedcars$mileage)     # range
+var(usedcars$mileage)       # variance
+sd(usedcars$mileage)        # standard deviation
+IQR(usedcars$mileage)       # Inter Quartile Range
+quantile(usedcars$mileage)  # quantiles
+
+# apply a function to more columns
+apply(usedcars[,c("year","price","mileage")], 2, summary)
+apply(usedcars[,c("year","price","mileage")], 2, median)
+
+# get a frequency table for the year variable
+table(usedcars$year)
+
+# assign the returned value to a variable
+median_price <- median(usedcars$price)
+median_price
+
+# visualize feature distribution - boxplot
+boxplot(usedcars$mileage)
+
+# visualize feature distribution - histogram
+hist(usedcars$mileage)
+
+# visualize feature distribution by group - boxplot
+boxplot(price ~ year, data = usedcars)
+```
+
+#### 8. Basic data integration {#Basic_data_integration}  
+```{r}
+# load the country demographics, economics and region datasets
+ddemo <- read.csv("country_demo.csv", stringsAsFactors = F)
+decon <- read.csv("country_econ.csv", stringsAsFactors = F)
+dregion <- read.csv("country_region.csv", stringsAsFactors = F)
+
+# inspect the datasets
+str(ddemo)
+str(decon)
+str(dregion)
+
+# merge datasets by country and year
+m_data <- merge(ddemo, decon, by = c("country", "year"))
+
+# visualise and inspect the merged dataset
+#   note: only common observations between the datasets are included
+m_data
+str(m_data)
+
+# merge datasets by country and year including all instances from ddemo
+#   note: argument all.x, all.y and all can be used to include all instances
+#     see ?merge for more details
+mx_data <- merge(ddemo, decon, by = c("country", "year"), all.x = TRUE)
+
+# visualise and inspect the merged dataset
+#   note: NAs have been added for missing observations
+mx_data
+str(mx_data)
+
+# merge the dregion into the mx_data dataset
+mxr_data <- merge(mx_data, dregion, by = "country")
+
+# visualise and inspect the merged dataset
+#   note: region variable values have been repeated
+mxr_data
+str(mxr_data)
+```

@@ -1,0 +1,107 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706 
+### Lab 01 - Introduction to R for ML  
+#### Exercise: data exploration
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+
+```{r}
+### 1. load the data from the chickenfeed.csv file
+df <- read.csv("chickenfeed.csv", stringsAsFactors = F)
+View(df)
+```
+
+```{r}
+### 2. inspect the structure of the data
+str(df)
+```
+
+```{r}
+### 3. get a summary table of each numerical variables
+summary(df$weight)
+summary(df$Time)
+summary(df$Chick)
+```
+
+```{r}
+### 4. create a new data frame cf21 containing only data for Time == 21
+cf21 <- df[df$Time == 21, ]
+
+```
+
+```{r}
+### 5. calculate mean, median and sd of the weight variable in cf21
+mean(cf21$weight)
+median(cf21$weight)
+sd(cf21$weight)
+
+```
+
+```{r}
+### 6. plot the weight distribution in cf21 as a boxplot
+boxplot(cf21$weight)
+```
+
+```{r}
+### 7. plot the weight distribution in cf21 as a histogram
+hist(cf21$weight)
+
+```
+
+```{r}
+### 8. plot the weight distribution in cf21 by Feed as a boxplot
+boxplot(cf21$weight ~ cf21$Feed)
+
+```
+
+```{r}
+### 9. repeat steps 4-8 for a data frame cf8 filtered by Time == 8
+
+```
+
+```{r}
+### 10. get a frequency table for the Feed variable in cf21
+table(cf21$Feed)
+
+```
+
+```{r}
+### 11. calculate the mean weight for each subgroups of Feed in cf21
+
+aggregate(cf21$weight~cf21$Feed, FUN=mean)
+
+
+```
+
+```{r}
+### 12. plot the weight distribution as histogram for the most effective Feed
+linseed <- subset(cf21, Feed == "linseed")
+hist(linseed$weight)
+```
+
+```{r}
+### 13. count the number of individuals with weight over 250 at Time == 21
+df2 <- df[df$weight > 250 | df$Time == 21, ]
+nrow(df2)
+```
+
+```{r}
+### 14. write the cf21 and cf8 into two text files
+write.table(cf21, "cf21.dat")
+
+```
