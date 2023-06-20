@@ -1,0 +1,95 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+###  Lab 07 - Prediction methods in R
+#### Exercise: Decision Trees and Random Forest
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+
+#### 0. load the tree and randomForest package
+```{r}
+library(tree)
+library(randomForest)
+```
+
+#### 1. data preparation
+```{r}
+### 1.1 load the training/test datasets
+###   from the census_income_training.csv and census_income_test files
+###   and inspect them
+###   note: more details on the dataset are available at:
+###     https://archive.ics.uci.edu/ml/datasets/Adult
+training_census_income <- read.csv("census_income_training.csv", stringsAsFactors = T)
+test_census_income <- read.csv("census_income_test.csv", stringsAsFactors = T)
+str(training_census_income)
+str(test_census_income)
+```
+
+#### 2. Decision tree and random forest training
+```{r}
+### 2.1 define a formula for predicting the income
+census_income_formula =  income ~ age + workclass + fnlwgt + education + education.num + marital.status + occupation + relationship + race + sex + capital.gain + capital.loss + hours.per.week
+### 2.2 train a decision tree
+dt_census_income <- tree(census_income_formula, data = training_census_income)
+### 2.3 prune the tree using cross-validation
+###   note: when trees have the same classification error
+###     select the one with fewer nodes
+cv_census_income <- cv.tree(dt_census_income, FUN=prune.misclass)
+pruned_tree_size <- rev(cv_census_income$size)[which.min(rev(cv_census_income$dev))]
+p_dt_census_income <- prune.misclass(dt_census_income, best = pruned_tree_size)
+### 2.4 train a random forest model
+rf_census_income <- randomForest(census_income_formula, ntree = 500, importance = T, data = training_census_income)
+```
+
+#### 3. Decision tree and random forest prediction
+```{r}
+### 3.1 compute the prediction for the test set with the pruned tree model
+###   note: the income attribute should be excluded from the test data set
+dt_census_income_pred <- predict(p_dt_census_income, test_census_income[,-14], type= "class")
+### 3.2 compute the prediction for the test set with the random forest model
+###   note: the income attribute should be excluded from the test data set
+rf_census_income_pred <- predict(rf_census_income, test_census_income[,-14], type= "class")
+### 3.3 create a table with actual and predicted values
+###   for the pruned decision tree and random forest models
+census_income_results <- data.frame(
+  actual = test_census_income$income,
+  p_dt = dt_census_income_pred,
+  rf = rf_census_income_pred
+)
+### 3.4 create a contingency table of the actual VS predicted for each model
+table_p_dt_results <- table(census_income_results[,c('actual','p_dt')])
+table_rf_results <- table(census_income_results[,c('actual','rf')])
+### 3.4 calculate accuracy values from the contingency tables
+acc_p_dt_results <- sum(diag(table_p_dt_results)) / sum(table_p_dt_results)
+acc_p_dt_results
+acc_rf_results <- sum(diag(table_rf_results)) / sum(table_rf_results)
+acc_rf_results
+```
+
+
+```{r}
+plot(p_dt_census_income)
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+fit <- rpart(income~., data = test_census_income, method = 'class')
+rpart.plot(fit, extra = 106)
+```
+
+
