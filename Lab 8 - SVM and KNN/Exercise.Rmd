@@ -1,0 +1,124 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab 08 - Prediction methods in R
+#### Exercise:  SVM and knn
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+
+#### 0. load the kernlab and class package
+```{r}
+# install the kernlab (for SVM) and class (for kNN) packages from CRAN
+if(require(kernlab) == FALSE){
+  install.packages('kernlab')
+  library(kernlab)
+}
+if(require(class) == FALSE){
+  install.packages('class')
+  library(class)
+}
+```
+
+#### 1. data preparation
+```{r}
+### 1.1 load and inspect the wbc_data dataset
+###   note: the dataset is derived from the Diagnostic Wisconsin Breast Cancer Database
+###     documentation on the original dataset is available here:
+###     https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)
+
+df <- read.csv("wbc_data.csv")
+
+str(df)
+
+df$diagnosis <- as.factor(df$diagnosis)
+
+table(df$diagnosis)
+
+### 1.2 create a 70/30 training/test set split
+###   note: set the random seed to 2018
+
+set.seed(2018)
+n_rows <- nrow(df)
+training_idx <- sample(n_rows, n_rows * 0.7)
+training_df <- df[training_idx,]
+test_df <- df[-training_idx,]
+```
+
+#### 2. SVM training
+```{r}
+### 2.1 define a formula for predicting the diagnosis
+###   note: try to use the reformulate function
+df_formula <- reformulate(names(training_df[, -1]), response = 'diagnosis')
+
+### 2.2 train with SVM (feel free to choose cost and kernel function)
+lk_svm_df <- ksvm(df_formula, data = training_df, kernel = 'vanilladot', C = 1)
+
+
+```
+
+#### 3. SVM and kNN prediction
+```{r}
+### 3.1 compute the prediction for the test set with the SVM model
+lk_svm_df_pred <- predict(lk_svm_df, test_df[,-1])
+
+### 3.2 transform the datasets for kNN with a min-max function
+MinMax <- function(x){
+  tx <- (x - min(x)) / (max(x) - min(x))
+  return(tx)
+}
+
+
+
+### 3.3 compute the prediction for the test set using kNN
+df_minmax <- apply(df[,-1], 2, MinMax)
+df_minmax <- as.data.frame(df_minmax)
+df_minmax <- cbind(df$diagnosis, df_minmax)
+
+
+training_df_minmax <- df_minmax[training_idx,]
+test_df_minmax <- df_minmax[-training_idx,]
+
+k_value = sqrt(dim(training_df_minmax)[1])
+knn_df_minmax_pred <- knn(train = training_df_minmax[,-1], test = test_df_minmax[,-1], cl = training_df_minmax[,1], k = k_value)
+
+### 3.4 create a table with actual and predicted values
+###   for the SVM model and kNN classification
+
+results_table <- table(actual = test_df$diagnosis, actual_minmax= test_df_minmax[,1], svm = lk_svm_df_pred, knn = knn_df_minmax_pred )
+results_table
+
+lk_svm_results_table <- table(svm = lk_svm_df_pred,  actual = test_df$diagnosis)
+lk_svm_results_table
+
+df_minmax_results <- table(
+  actual = test_df_minmax[,1],
+  knn = knn_df_minmax_pred
+)
+df_data_minmax_results
+
+### 3.5 create a contingency table of the actual VS predicted for both SVM and kNN
+
+#above
+
+### 3.6 calculate accuracy values from the contingency tables
+acc_lk_svm <- sum(diag(lk_svm_results_table)) / sum(lk_svm_results_table)
+acc_lk_svm
+
+acc_knn <- sum(diag(df_minmax_results)) / sum(df_minmax_results)
+acc_knn
+
+```
