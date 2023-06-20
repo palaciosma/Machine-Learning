@@ -1,0 +1,139 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab 06 - Prediction methods in R
+#### Tutorial
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+#### Table of contents
+
+1. [Install neural network package](#Install_neural_network_package)
+2. [Data preparation](#Data_preparation)
+3. [Neural network training](#Neural_network_training)
+4. [Neural network prediction](#Neural_network_prediction)
+
+***
+
+#### 1. Install neural network package{#Install_neural_network_package}
+```{r}
+# install and load the neuralnet package from CRAN
+if(require(neuralnet) == FALSE){
+  install.packages('neuralnet')
+}
+```
+
+#### 2. Data preparation{#Data_preparation}
+```{r}
+
+# read the data from the concrete.csv file
+concrete <- read.csv("concrete.csv")
+
+# inspect the data
+str(concrete)
+
+# transform the data using a min-max function
+#   note: this will make the data more suitable for use with NN
+#     as the attribute values will be on a narrow interval around zero
+# first define a MinMax function
+MinMax <- function(x){
+  tx <- (x - min(x)) / (max(x) - min(x))
+  return(tx)
+}
+# then apply the function to each column of the data set
+#   note: the apply function returns a matrix
+concrete_minmax <- apply(concrete, 2, MinMax)
+
+# the matrix needs to be 'cast' into a data frame
+#   note: R has an as.data.frame function for this purpose
+concrete_minmax <- as.data.frame(concrete_minmax)
+
+# create a 70/30 training/test set split
+n_rows <- nrow(concrete_minmax)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_concrete_minmax <- concrete_minmax[training_idx,]
+test_concrete_minmax <- concrete_minmax[-training_idx,]
+```
+
+#### 3. Neural network training{#Neural_network_training}
+```{r}
+# define a formula for predicting strength
+concrete_formula = strength ~ cement + slag + ash + water + superplastic + coarseagg + fineagg + age
+
+# train a neural network with 1 hidden node
+concrete_nn_1 <- neuralnet(concrete_formula, data = training_concrete_minmax)
+
+# train a neural network with 5 nodes on one hidden layer
+#   note: the number of layers is set with the hidden option parameter
+concrete_nn_5 <- neuralnet(concrete_formula, hidden = 5, data = training_concrete_minmax)
+
+# train a neural network with 5 nodes on each of two hidden layers
+concrete_nn_55 <- neuralnet(concrete_formula, hidden = c(5,5), data = training_concrete_minmax)
+
+# plot the three neural networks and compare their structure
+plot(concrete_nn_1)
+plot(concrete_nn_5)
+plot(concrete_nn_55)
+```
+
+#### 4. Neural network prediction{#Neural_network_prediction}
+```{r}
+# compute the prediction for each neural network
+#   note: the strength attribute (column 9) is excluded from the test data set
+pred_concrete_nn_1 <- compute(concrete_nn_1, test_concrete_minmax[,-9])
+pred_concrete_nn_5 <- compute(concrete_nn_5, test_concrete_minmax[,-9])
+pred_concrete_nn_55 <- compute(concrete_nn_55, test_concrete_minmax[,-9])
+
+# create a table with actual values and the three predictions
+#   note: predicted values are stored as net_result attribute of the prediction object
+concrete_results <- data.frame(
+  actual = test_concrete_minmax$strength,
+  nn_1 = pred_concrete_nn_1$net.result,
+  nn_5 = pred_concrete_nn_5$net.result,
+  nn_55 = pred_concrete_nn_55$net.result
+)
+
+# calculate the correlation between actual and predicted values to identify the best predictor
+cor(concrete_results[,'actual'], concrete_results[,c("nn_1","nn_5", "nn_55")])
+
+# plot actual vs predicted values for the worst (blue) and best predictor (orange)
+#   note: points is used to add points on a graph
+plot(
+  concrete_results$actual,
+  concrete_results$nn_1,
+  col = 'blue',
+  xlab = 'actual strength',
+  ylab = 'predicted strength',
+  xlim = c(0,1),
+  ylim = c(0,1)
+)
+points(
+  concrete_results$actual,
+  concrete_results$nn_55,
+  col = 'orange'
+)
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+legend(
+  'topleft',
+  c('nn_1', 'nn_55'),
+  pch = 1,
+  col = c('blue', 'orange'),
+  bty = 'n'
+)
+```
+

@@ -1,0 +1,123 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+###  Lab 06 - Prediction methods in R
+#### Exercise: Neural network prediction
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+
+#### 0. load the neuralnet package
+
+```{r}
+# install and load the neuralnet package from CRAN
+if(require(neuralnet) == FALSE){
+  install.packages('neuralnet')
+}
+```
+
+```{r}
+library(neuralnet)
+```
+
+#### 1. data preparation
+```{r}
+### 1.1 load the data from the wine.csv file and inspect it
+
+df <- read.csv("wine.csv")
+str(df)
+
+
+### 1.2 transform the data using a min-max function
+###   first define a MinMax function
+
+MinMax <- function(x){
+  tx <- (x - min(x)) / (max(x) - min(x))
+  return(tx)
+}
+
+winery <- df[, c(14)]
+df_nowinery <- df[, -c(14)]
+df_normal <- apply(df_nowinery, 2, MinMax)
+df_normal <- as.data.frame(df_normal)
+View(df_normal)
+
+df_normal <- cbind(df_normal, as.data.frame(winery))
+
+
+### then apply the function to each column of the data set (except for winery)
+###   note: remove the winery column first and then added it again after transformation
+###     and do not forget to cast the apply output to a data frame
+
+#done
+
+
+### 1.3 create a 70/30 training/test set split
+
+n_rows <- nrow(df_normal)
+
+training_idx <- sample(n_rows, n_rows * 0.7)
+training_df_normal <- df_normal[training_idx,]
+test_df_normal <- df_normal[-training_idx,]
+
+
+```
+
+#### 2. Neural network training
+```{r}
+### 2.1 define a formula for predicting Winery
+
+winery_formula = winery ~ .
+
+
+### 2.2 train a neural network (feel free to choose the network structure)
+nn_5 <- neuralnet(winery_formula, hidden = 7, data = training_df_normal)
+
+plot(nn_5)
+```
+
+#### 3. Neural network prediction
+```{r}
+### 3.1 compute the prediction for the test set
+###   note: the Winery attribute should be excluded from the test data set
+
+pred <- compute(nn_5, test_df_normal[,-c(14)])
+
+
+### 3.2 create a table with actual and predicted values
+###   note: round up the predicted results to get integers
+###     R round function can be used for this
+
+results <- data.frame(
+  actual = test_df_normal$winery,
+  nn_5 = round(pred$net.result)
+)
+
+### 3.3 create a contingency table of the actual VS predicted
+
+con_table <- table(test_df_normal$winery, round(pred$net.result))
+
+### 3.4 calculate accuracy from the contingency table as:
+###   sum of diagonal elements over sum of the matrix values
+
+acc <- sum(diag(con_table))/sum(con_table) #overall accuracy
+acc
+
+inc_class <- 1-sum(diag(con_table))/sum(con_table) #incorrect classification 
+inc_class
+```
+
+

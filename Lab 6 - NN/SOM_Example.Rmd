@@ -1,0 +1,117 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab 06 - Prediction methods in R
+#### Example of use of Self Organising Maps
+*Alessandro Pandini*   
+Revision: 1.01
+
+***
+#### Table of contents
+
+1. [Install kohonen package](#Install_kohonen_package)
+2. [Data preparation](#Data_preparation)
+3. [SOM training](#SOM_training)
+4. [SOM visualisation](#SOM_visualisation)
+
+***
+
+#### 1. Install kohonen package}{#Install_kohonen_package}
+```{r}
+
+# install and load the kohonen package from CRAN
+if(require(kohonen) == FALSE){
+  install.packages('kohonen')
+}
+```
+
+#### 2. Data preparation{#Data_preparation}
+```{r}
+
+# read the data from the olive_oil.csv file
+olive_oil <- read.csv("olive_oil.csv")
+
+# read the geographical labels for the data
+#   note: for this example the column region from this dataset will
+#     be used as target variable for training
+olive_oil_region <- read.csv("olive_oil_region.csv")
+
+# inspect the data
+str(olive_oil)
+
+# the data frame needs to be 'cast' into a matrix for som training
+#   note: R has an as.matrix function for this purpose
+olive_oil_matrix <- as.matrix(olive_oil)
+
+# the label vector needs to be 'cast' into a factor for som training
+olive_oil_region_label <- as.factor(olive_oil_region$region)
+```
+
+#### 3. SOM training{#SOM_training}
+
+```{r}
+
+# set the random seed
+set.seed(1999)
+
+# train SOM model with 10x10 hexagonal grid
+#   note: kohonen package provides different functions for training
+#     som for unsupervised learning
+#     xyf for supervised learning
+olive_oil_SOM <- xyf(olive_oil_matrix, olive_oil_region_label,
+                     grid = somgrid(10, 10, 'hexagonal'))
+```
+
+#### 4. SOM visualisation{#SOM_visualisation}
+```{r}
+
+# set color palettes for map plotting
+#   note: the return value of colorRampPalette is a function that can
+#     be used to generate a set of colours in the range of the palette
+#       e.g. ncounts_palette(5) will return five colours
+ncounts_palette <- colorRampPalette(c("white", "blue"), space = "rgb")
+quality_palette <- colorRampPalette(c("white", "red"), space = "rgb")
+
+# plot the number of objects mapped to each neuron
+plot(
+  olive_oil_SOM,
+  shape = 'straight',
+  type = 'counts',
+  palette.name = ncounts_palette,
+  main = "Number of objects per neuron"
+)
+
+# plot the mean distance of objects mapped to each neuron
+plot(
+  olive_oil_SOM,
+  shape = 'straight',
+  type = 'quality',
+  palette.name = quality_palette,
+  main = "Mean distance of objects in each neuron"
+)
+
+# plot the values of variables describing each neuron
+#   for the input variables (from the olive_oil_matrix)
+#   for the output variable (from olive_oil_region$region)
+par(mfrow = c(1,2))
+plot(
+  olive_oil_SOM,
+  shape = 'straight',
+  type = 'codes',
+  palette.name = rainbow,
+  main = c("Fatty acid", "Region of origin")
+)
+par(mfrow = c(1,1))
+```
