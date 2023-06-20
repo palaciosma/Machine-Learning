@@ -1,0 +1,118 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706/MA5638
+### Lab 09 - Performance evaluation
+#### Exercise:  Decision trees and random forests
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+
+#### 0. load the caret and ROCR packages
+```{r}
+
+
+```
+
+#### 1. data preparation
+```{r}
+### 1.1 load and inspect the Glass Identification Data Set
+###   note: the dataset is derived from the
+###     documentation on the original dataset is available here:
+###     https://archive.ics.uci.edu/ml/datasets/glass+identification
+
+
+### 1.2 set the Type variable as factor
+
+### 1.3 create a 70/30 training/test set split
+###   note: set the random seed to 2018
+
+
+
+
+
+```
+
+#### 2. Model training
+```{r}
+### 2.1 define a formula for predicting the Type
+###   note: try to use the reformulate function
+
+### 2.2 set the parameters for tuning to 10-fold CV
+
+### 2.3 train and tune a decision tree with rpart
+
+### 2.4 train and tune a random forest with rf
+
+```
+
+#### 3. Prediction
+```{r}
+### 3.1 compute prediction with the tree model
+###   note: combine actual, predicted and probability prediction in a data frame
+###     by using cbind and the 'type' argument in the predict function
+
+
+
+
+
+### 3.2 compute prediction with the Random forests model
+###   note: combine actual, predicted and probability prediction in a data frame
+###     by using cbind and the 'type' argument in the predict function
+
+
+
+
+
+```
+
+#### 4. Performance evaluation
+```{r}
+### 4.1 generate a confusion matrix for the each predicted model and inspect them
+###   set the positive class for to "2"
+
+
+
+
+### 4.2 prepare two data frames to generate a ROC curve:
+#   a data frame with the probability scores for the prediction of "2"
+#   a data frame with the TRUE for actual values equal to "2"
+
+
+
+
+
+
+
+
+### 4.3 create ROCR prediction and performance objects
+
+
+### 4.4 plot the ROC curve for the two methods
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```

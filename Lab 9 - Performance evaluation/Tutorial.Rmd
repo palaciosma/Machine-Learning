@@ -1,0 +1,182 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706/MA5638
+### Lab 09 - Performance evaluation
+#### Tutorial
+*Alessandro Pandini*  
+Revision: 1.01
+
+***
+#### Table of contents
+
+1. [Install caret, rpart and ROCR packages](#Install_packages)
+2. [Data preparation](#Data_preparation)
+3. [Decision tree training + tuning](#Decision_tree_training_tuning)
+4. [Random forests training + tuning](#Random_Forest_tree_training_tuning)
+5. [Prediction](#Prediction)
+6. [Performance evaluation](#Performance_evaluation)
+
+***
+
+#### 1. Install caret, rpart and ROCR packages{#Install_packages}
+```{r}
+# install the caret, rpart and ROCR packages from CRAN
+if(require(caret) == FALSE){
+  install.packages('caret', dependencies = TRUE)
+  library(caret)
+}
+if(require(rpart) == FALSE){
+  install.packages('rpart')
+  library(rpart)
+}
+if(require(ROCR) == FALSE){
+  install.packages('ROCR')
+  library(ROCR)
+}
+
+# for a full list of models available in the caret packages:
+#   http://topepo.github.io/caret/available-models.html
+# for each model the list of tunable parameters is available
+#   from the caret command modelLookup
+```
+
+#### 2. Data preparation{#Data_preparation}
+```{r}
+# read the data from the telecom_churn.csv file
+#   note: the dataset is adapted from the Churn in Telcom's dataset
+#     documentation on the original dataset is available here:
+#     https://www.kaggle.com/becksddf/churn-in-telecoms-dataset
+tchurn <- read.csv("telecom_churn.csv", stringsAsFactors = T)
+
+# inspect the data
+str(tchurn)
+
+# set random seed for following sampling steps
+set.seed(2018)
+
+# create a 70/30 training/test set split
+n_rows <- nrow(tchurn)
+# sample 70% (n_rows * 0.7) indices in the ranges 1:nrows
+training_idx <- sample(n_rows, n_rows * 0.7)
+# filter the data frame with the training indices (and the complement)
+training_tchurn <- tchurn[training_idx,]
+test_tchurn <- tchurn[-training_idx,]
+```
+
+#### 3. Decision tree training + tuning{#Decision_tree_training_tuning}
+```{r}
+# define a formula for predicting churn
+tchurn_formula <- reformulate(names(training_tchurn[, -17]), response = 'churn')
+
+# set the parameters for tuning to 10-fold CV
+ctrl_parameters <- trainControl(method = 'CV', number = 10)
+
+# check the tunable parameter available for rpart
+#   note: the algorithm has a parameter for tree complexity
+modelLookup('rpart')
+
+# train a decision tree using caret train function
+#   note: rpart is a function to build decision trees in R
+#     and the training parameters are passed as option trControl
+tchurn_tree <- train(tchurn_formula, data = training_tchurn, method = "rpart", trControl = ctrl_parameters)
+
+# inspect the result of the training
+#   note: the summary reports the parameter scan results
+#     and the value for the best model
+tchurn_tree
+```
+
+#### 4. Random forests training + tuning{#Random_Forest_tree_training_tuning}
+```{r}
+# check the tunable parameter available for rf
+modelLookup('rf')
+
+# train a Random forests model using caret train function
+#   note: rf is the algorithm available in the randomForest package
+#     and the training parameters are passed as option trControl
+tchurn_rf <- train(tchurn_formula, data = training_tchurn, method = "rf", trControl = ctrl_parameters)
+
+# inspect the result of the training
+tchurn_rf
+```
+
+#### 5. Prediction{#Prediction}
+```{r}
+# compute prediction with the tree model
+#   note: combine actual, predicted and probability prediction in a data frame
+#     by using cbind and the 'type' argument in the predict function
+tchurn_tree_predict <-  cbind(
+  actual = test_tchurn$churn,
+  predicted = predict(tchurn_tree, test_tchurn[, -17], type = 'raw'),
+  predict(tchurn_tree, test_tchurn[, -17], type = 'prob')
+)
+
+# compute prediction with the Random forests model
+#   note: combine actual, predicted and probability prediction in a data frame
+#     by using cbind and the 'type' argument in the predict function
+tchurn_rf_predict <-  cbind(
+  actual = test_tchurn$churn,
+  predicted = predict(tchurn_rf, test_tchurn[, -17], type = 'raw'),
+  predict(tchurn_rf, test_tchurn[, -17], type = 'prob')
+)
+```
+
+#### 6. Performance evaluation{#Performance_evaluation}
+```{r}
+# generate a confusion matrix for the each predicted model
+#   and inspect them: the caret confusionMatrix function
+#   returns also Accuracy, Kappa, Sensitivity and Specificity
+#     note: the positive class should be explicitly declared
+#       with the argument 'positive'
+tree_confmat <- confusionMatrix(data = tchurn_tree_predict$predicted, reference = tchurn_tree_predict$actua, positive = "True")
+rf_confmat <- confusionMatrix(data = tchurn_rf_predict$predicted, reference = tchurn_rf_predict$actua, positive = "True")
+tree_confmat
+rf_confmat
+
+# prepare two data frames to generate a ROC curve:
+#   a data frame with the probability scores for the prediction of True
+#   a data frame with the actual classes (repeated twice)
+tchurn_models_prob <- data.frame(
+  tree = tchurn_tree_predict$True,
+  rf = tchurn_rf_predict$True
+)
+tchurn_label <- data.frame(
+  tree = tchurn_tree_predict$actual,
+  rf = tchurn_rf_predict$actual
+)
+
+# ROCR requires to create a prediction and a performance object
+#   note: the performance object can be created for different measures
+#     e.g. TPR and FPR in this case
+tchurn_ROC_pred = prediction(tchurn_models_prob, tchurn_label)
+tchurn_ROC_perf = performance(tchurn_ROC_pred, "tpr", "fpr")
+
+# plot the ROC curve for the two methods
+opar <- par(no.readonly = TRUE)
+par(pty = 's')
+plot(
+ tchurn_ROC_perf,
+ col = as.list(c("orange", "blue"))
+)
+abline(a = 0, b = 1, lty = 2, col = 'red')
+legend(
+  "bottomright",
+  names(tchurn_models_prob),
+  col = c("orange", "blue"),
+  lty = 1,
+  bty = 'n'
+)
+par <- opar
+```
