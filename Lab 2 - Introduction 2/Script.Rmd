@@ -1,0 +1,140 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment = '>')
+```
+
+### CS5706
+### Lab 02 - Introduction to R for ML
+#### Example script for data analysis
+*Alessandro Pandini*
+Revision: 1.01
+
+***
+
+#### load required packages
+```{r}
+library(psych)
+```
+
+#### functions
+```{r}
+#   customised histogram plotting function
+plotHist <- function(dFrame, varName, xLab, pTitle, breakSeq){
+    opar <- par(no.readonly = TRUE)
+    par(las = 2)
+    hist(
+        dFrame[,varName],
+        breaks = breakSeq,
+        xlab = xLab,
+        main = pTitle,
+        col = rgb(0, 1, 0),
+        border = 'white',
+        xaxt = 'n'
+    )
+    abline(v = median(dFrame[,varName]), lty = 2)
+    legend('topright', 'median', lty = 2, bty = 'n')
+    axis(1, at = breakSeq)
+    par(opar)
+}
+
+plotPredAct <- function(predicted, actual, pTitle, tickVector, tickLabels){
+    opar <- par(no.readonly = TRUE)
+    par(pty = 's')
+    plot(
+        predicted ~ actual,
+        ylab = 'predicted',
+        xlab = 'actual',
+        main = pTitle,
+        xaxt = 'n',
+        yaxt = 'n',
+        xlim = c(0, max(tickVector)),
+        ylim = c(0, max(tickVector))
+    )
+    axis(1, at = tickVector, tickLabels)
+    axis(2, at = tickVector, tickLabels)
+    abline(a = 0, b = 1, col = 'red', lty = 2)
+    par(opar)
+}
+```
+
+#### 1. load data
+```{r}
+insurance <- read.csv("insurance_data.csv", stringsAsFactors = TRUE)
+insurance_test <- read.csv("insurance_test_data.csv", stringsAsFactors = TRUE)
+
+insurance_num_names <- c("age", "bmi", "children", "expenses")
+insurance_indep_names <- c("age", "sex", "bmi", "children", "smoker", "region" )
+```
+
+#### 2. data exploration
+```{r}
+#   histogram
+pdf(file = "insurance_expenses_hist.pdf")
+plotHist(insurance, "expenses",  "Expenses in $1,000",
+         "Insurance data: charges", seq(0, 65000, 5000))
+dev.off()
+
+#   boxplots
+pdf(file = "insurance_expenses_boxplot.pdf", width = 3, height = 9)
+opar <- par(no.readonly = TRUE)
+par(mfrow = c(3,1))
+boxplot(expenses ~ sex, data = insurance)
+boxplot(expenses ~ smoker, data = insurance)
+boxplot(expenses ~ region, data = insurance)
+par(opar)
+dev.off()
+
+# scatterplot matrix
+pdf(file = "insurance_expenses_scatterplots.pdf")
+pairs.panels(insurance[insurance_num_names])
+dev.off()
+
+# correlation matrix
+insurance_num_cor <- cor(insurance[insurance_num_names])
+write.csv(insurance_num_cor, file = "insurance_correlations.csv")
+```
+
+#### 3. model training
+```{r}
+ins_model <- lm(expenses ~ ., data = insurance)
+save(ins_model, file = "insurance_expenses_model.RData")
+```
+
+#### 4. model evaluation
+```{r}
+#   summary
+ins_model_summary <- summary(ins_model)
+save(ins_model_summary, file = "insurance_expenses_model_summary.RData")
+
+ins_model_summary_coefs <- ins_model_summary$coefficients
+write.csv(ins_model_summary_coefs, file = "ins_model_summary_coefs.csv")
+
+#   diagnostics plots
+pdf(file = "insurance_expenses_diagnostics.pdf")
+opar <- par(no.readonly = TRUE)
+par(mfrow = c(2,2))
+plot(ins_model)
+par(opar)
+dev.off()
+```
+
+#### 5. prediction
+```{r}
+insurance_pred <- predict(ins_model, insurance_test[insurance_indep_names])
+insurance_test$pred <- insurance_pred
+write.csv(insurance_test, file = "insurance_test_pred.csv", row.names = F)
+
+pdf(file = "insurance_expenses_prediction.pdf")
+plotPredAct(insurance_pred, insurance_test$expenses,
+            'expenses in $1000', seq(0, 65000, 5000), seq(0, 65, 5))
+dev.off()
+```
